@@ -1,0 +1,2 @@
+# DCMapImageScaler
+一个将您的图片转换成适合于Minecraft地图画尺寸的小工具
