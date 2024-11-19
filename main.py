@@ -1,5 +1,6 @@
-import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+
+import tkinterdnd2 as tkdnd
 from PIL import Image
 import os
 
@@ -9,10 +10,13 @@ from control_panel import ControlPanel
 
 
 class ImageScalerApp:
-    def __init__(self, root):
+    def __init__(self, root: tkdnd.Tk):
         self.root = root
         self.root.title("DC服务器地图画缩放器")
         self.root.geometry("1024x768")
+
+        self.root.drop_target_register(tkdnd.DND_FILES)
+        self.root.dnd_bind('<<Drop>>', self.on_drag_drop)
 
         # Configure main window scaling
         self.root.grid_rowconfigure(0, weight=1)
@@ -40,6 +44,11 @@ class ImageScalerApp:
         # Initialize image variables
         self.original_image = None
         self.scaled_image = None
+
+    def on_drag_drop(self, event):
+        file_path = event.data
+        self.control_panel.update_filepath(file_path)
+        self.load_image(file_path)
 
     def load_image(self, file_path):
         """Load and display the selected image"""
@@ -130,7 +139,7 @@ class ImageScalerApp:
 
 
 def main():
-    root = tk.Tk()
+    root = tkdnd.Tk()
     ImageScalerApp(root)
     root.mainloop()
 

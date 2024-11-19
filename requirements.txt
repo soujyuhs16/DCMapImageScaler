@@ -1,7 +1,2 @@
-asgiref==3.8.1
-image==1.5.33
-Pillow==10.0.0
-six==1.16.0
-sqlparse==0.5.2
-tk==0.1.0
-tzdata==2024.2
+Pillow==10.4.0
+tkinterdnd2==0.4.2
