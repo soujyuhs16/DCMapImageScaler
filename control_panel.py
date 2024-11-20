@@ -32,6 +32,7 @@ class ControlPanel(ttk.Frame):
         )
         self.width_multiple.pack(anchor=tk.W, pady=(5, 15))
         self.width_multiple.set(2)
+        self.width_multiple.bind('<KeyRelease>', self._on_scale_change)
         
         # Height multiple
         ttk.Label(scale_frame, text="高 (1 = 128px):").pack(anchor=tk.W)
@@ -44,6 +45,7 @@ class ControlPanel(ttk.Frame):
         )
         self.height_multiple.pack(anchor=tk.W, pady=(5, 10))
         self.height_multiple.set(2)
+        self.height_multiple.bind('<KeyRelease>', self._on_scale_change)
         
         # Price display
         self.price_var = tk.StringVar()
@@ -77,18 +79,21 @@ class ControlPanel(ttk.Frame):
         # Initial price calculation
         self._update_price()
     
+    def update_filepath(self, file_path: str):
+        self.file_path.set(file_path)
+
     def _browse_file(self):
         """Handle file browse button click"""
         filetypes = (
-            ('Image files', '*.png *.jpg *.jpeg *.gif *.bmp'),
-            ('All files', '*.*')
+            ('图片文件', '*.png *.jpg *.jpeg *.gif *.bmp'),
+            ('所有文件', '*.*')
         )
         filename = filedialog.askopenfilename(filetypes=filetypes)
         if filename:
             self.file_path.set(filename)
             self.on_image_selected(filename)
     
-    def _on_scale_change(self):
+    def _on_scale_change(self, event = None):
         """Handle scale value changes"""
         try:
             width = int(self.width_multiple.get())
