@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
+
 from image_utils import ImageProcessor
 
 class ControlPanel(ttk.Frame):
@@ -14,8 +15,10 @@ class ControlPanel(ttk.Frame):
         # File selection
         self.file_path = tk.StringVar()
         ttk.Label(self, text="图片文件路径:").pack(anchor=tk.W, pady=(0, 5))
-        ttk.Entry(self, textvariable=self.file_path, width=40).pack(anchor=tk.W)
-        ttk.Button(self, text="浏览...", command=self._browse_file).pack(anchor=tk.W, pady=(5, 20))
+        self.filepath_entry = ttk.Entry(self, textvariable=self.file_path, width=40)
+        self.filepath_entry.pack(anchor=tk.W)
+        self.browse_button = ttk.Button(self, text="浏览...", command=self._browse_file)
+        self.browse_button.pack(anchor=tk.W, pady=(5, 20))
         
         # Scale controls frame
         scale_frame = ttk.LabelFrame(self, text="缩放设置", padding=(10, 5))
@@ -52,21 +55,45 @@ class ControlPanel(ttk.Frame):
         self.price_var.set("生成地图画将需要花费: 100 DCB")
         ttk.Label(scale_frame, textvariable=self.price_var, font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(10, 5))
         
-        # Buttons
-        button_frame = ttk.Frame(self)
-        button_frame.pack(fill=tk.X, pady=(0, 20))
-        
-        ttk.Button(
-            button_frame,
-            text="更新预览图",
+        # Preview
+        self.preview_frame = ttk.LabelFrame(self, text="预览方式", padding=(10, 5))
+        self.preview_frame.pack(fill=tk.X, pady=(0, 20))
+
+        self.preview_option = tk.StringVar(value='SCALE')
+
+        self.scale_preview_radio = ttk.Radiobutton(
+            self.preview_frame,
+            text="缩放预览",
+            value='SCALE',
+            variable=self.preview_option,
             command=self._on_scale_change
-        ).pack(side=tk.LEFT, padx=(0, 10))
+        )
+        self.scale_preview_radio.pack(side=tk.LEFT)
+
+        self.actual_preview_radio = ttk.Radiobutton(
+            self.preview_frame,
+            text="实装预览",
+            value='ACTUAL',
+            variable=self.preview_option,
+            command=self._on_scale_change
+        )
+        self.actual_preview_radio.pack(side=tk.LEFT, padx=(20, 0))
+        
+        save_frame = ttk.Frame(self)
+
+        save_frame.pack(fill=tk.X, pady=(0, 20))
         
         ttk.Button(
-            button_frame,
+            save_frame,
             text="另存为图片",
             command=self.on_save_clicked
         ).pack(side=tk.LEFT)
+
+        self.progress_value = tk.IntVar(value=0)
+        self.progress = ttk.Progressbar(
+            self.preview_frame,
+            variable=self.progress_value
+        )
         
         # Status
         self.status_var = tk.StringVar()
@@ -79,6 +106,22 @@ class ControlPanel(ttk.Frame):
         # Initial price calculation
         self._update_price()
     
+    def disable(self, freeze: bool):
+        if freeze:
+            self.filepath_entry.config(state='disabled')
+            self.browse_button.config(state='disabled')
+            self.width_multiple.config(state='disabled')
+            self.height_multiple.config(state='disabled')
+            self.scale_preview_radio.config(state='disabled')
+            self.actual_preview_radio.config(state='disabled')
+        else:
+            self.filepath_entry.config(state='normal')
+            self.browse_button.config(state='normal')
+            self.width_multiple.config(state='normal')
+            self.height_multiple.config(state='normal')
+            self.scale_preview_radio.config(state='normal')
+            self.actual_preview_radio.config(state='normal')
+
     def update_filepath(self, file_path: str):
         self.file_path.set(file_path)
 
@@ -93,15 +136,12 @@ class ControlPanel(ttk.Frame):
             self.file_path.set(filename)
             self.on_image_selected(filename)
     
-    def _on_scale_change(self, event = None):
+    def _on_scale_change(self, event=None):
         """Handle scale value changes"""
-        try:
-            width = int(self.width_multiple.get())
-            height = int(self.height_multiple.get())
-            self._update_price()
-            self.on_scale_changed(width, height)
-        except ValueError:
-            pass
+        width = int(self.width_multiple.get())
+        height = int(self.height_multiple.get())
+        self._update_price()
+        self.on_scale_changed(width, height, self.preview_option.get())
     
     def _update_price(self):
         """Update the price display"""
