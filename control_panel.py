@@ -1,24 +1,46 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
-
 from image_utils import ImageProcessor
+from preview_state import PreviewState
 
 class ControlPanel(ttk.Frame):
-    def __init__(self, parent, on_image_selected, on_scale_changed, on_save_clicked, **kwargs):
+    def __init__(self, parent, on_image_selected, on_scale_changed, on_save_clicked, on_preview_mode_changed, **kwargs):
         super().__init__(parent, **kwargs)
+        
+        # Initialize preview state
+        self.preview_state = PreviewState()
         
         # Callbacks
         self.on_image_selected = on_image_selected
         self.on_scale_changed = on_scale_changed
         self.on_save_clicked = on_save_clicked
+        self.on_preview_mode_changed = on_preview_mode_changed
         
         # File selection
         self.file_path = tk.StringVar()
         ttk.Label(self, text="图片文件路径:").pack(anchor=tk.W, pady=(0, 5))
-        self.filepath_entry = ttk.Entry(self, textvariable=self.file_path, width=40)
-        self.filepath_entry.pack(anchor=tk.W)
-        self.browse_button = ttk.Button(self, text="浏览...", command=self._browse_file)
-        self.browse_button.pack(anchor=tk.W, pady=(5, 20))
+        ttk.Entry(self, textvariable=self.file_path, width=40).pack(anchor=tk.W)
+        ttk.Button(self, text="浏览...", command=self._browse_file).pack(anchor=tk.W, pady=(5, 20))
+        
+        # Preview mode selection
+        preview_frame = ttk.LabelFrame(self, text="预览模式", padding=(10, 5))
+        preview_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        self.preview_mode = tk.StringVar(value="normal")
+        ttk.Radiobutton(
+            preview_frame,
+            text="普通预览",
+            variable=self.preview_mode,
+            value="normal",
+            command=self._on_preview_mode_change
+        ).pack(anchor=tk.W)
+        ttk.Radiobutton(
+            preview_frame,
+            text="地图画预览",
+            variable=self.preview_mode,
+            value="minecraft",
+            command=self._on_preview_mode_change
+        ).pack(anchor=tk.W)
         
         # Scale controls frame
         scale_frame = ttk.LabelFrame(self, text="缩放设置", padding=(10, 5))
@@ -35,7 +57,6 @@ class ControlPanel(ttk.Frame):
         )
         self.width_multiple.pack(anchor=tk.W, pady=(5, 15))
         self.width_multiple.set(2)
-        self.width_multiple.bind('<KeyRelease>', self._on_scale_change)
         
         # Height multiple
         ttk.Label(scale_frame, text="高 (1 = 128px):").pack(anchor=tk.W)
@@ -48,52 +69,27 @@ class ControlPanel(ttk.Frame):
         )
         self.height_multiple.pack(anchor=tk.W, pady=(5, 10))
         self.height_multiple.set(2)
-        self.height_multiple.bind('<KeyRelease>', self._on_scale_change)
         
         # Price display
         self.price_var = tk.StringVar()
         self.price_var.set("生成地图画将需要花费: 100 DCB")
         ttk.Label(scale_frame, textvariable=self.price_var, font=("Arial", 10, "bold")).pack(anchor=tk.W, pady=(10, 5))
         
-        # Preview
-        self.preview_frame = ttk.LabelFrame(self, text="预览方式", padding=(10, 5))
-        self.preview_frame.pack(fill=tk.X, pady=(0, 20))
-
-        self.preview_option = tk.StringVar(value='SCALE')
-
-        self.scale_preview_radio = ttk.Radiobutton(
-            self.preview_frame,
-            text="缩放预览",
-            value='SCALE',
-            variable=self.preview_option,
-            command=self._on_scale_change
-        )
-        self.scale_preview_radio.pack(side=tk.LEFT)
-
-        self.actual_preview_radio = ttk.Radiobutton(
-            self.preview_frame,
-            text="实装预览",
-            value='ACTUAL',
-            variable=self.preview_option,
-            command=self._on_scale_change
-        )
-        self.actual_preview_radio.pack(side=tk.LEFT, padx=(20, 0))
-        
-        save_frame = ttk.Frame(self)
-
-        save_frame.pack(fill=tk.X, pady=(0, 20))
+        # Buttons
+        button_frame = ttk.Frame(self)
+        button_frame.pack(fill=tk.X, pady=(0, 20))
         
         ttk.Button(
-            save_frame,
+            button_frame,
+            text="更新预览图",
+            command=self._on_scale_change
+        ).pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Button(
+            button_frame,
             text="另存为图片",
             command=self.on_save_clicked
         ).pack(side=tk.LEFT)
-
-        self.progress_value = tk.IntVar(value=0)
-        self.progress = ttk.Progressbar(
-            self.preview_frame,
-            variable=self.progress_value
-        )
         
         # Status
         self.status_var = tk.StringVar()
@@ -106,22 +102,27 @@ class ControlPanel(ttk.Frame):
         # Initial price calculation
         self._update_price()
     
-    def disable(self, freeze: bool):
-        if freeze:
-            self.filepath_entry.config(state='disabled')
-            self.browse_button.config(state='disabled')
-            self.width_multiple.config(state='disabled')
-            self.height_multiple.config(state='disabled')
-            self.scale_preview_radio.config(state='disabled')
-            self.actual_preview_radio.config(state='disabled')
+    def _on_preview_mode_change(self):
+        """Handle preview mode change"""
+        mode = self.preview_mode.get()
+        if mode == "minecraft":
+            self.preview_state.start_preview()
+            self._disable_size_controls()
         else:
-            self.filepath_entry.config(state='normal')
-            self.browse_button.config(state='normal')
-            self.width_multiple.config(state='normal')
-            self.height_multiple.config(state='normal')
-            self.scale_preview_radio.config(state='normal')
-            self.actual_preview_radio.config(state='normal')
-
+            self.preview_state.end_preview()
+            self._enable_size_controls()
+        self.on_preview_mode_changed(mode)
+    
+    def _disable_size_controls(self):
+        """Disable size controls during preview"""
+        self.width_multiple.configure(state="disabled")
+        self.height_multiple.configure(state="disabled")
+    
+    def _enable_size_controls(self):
+        """Enable size controls after preview"""
+        self.width_multiple.configure(state="normal")
+        self.height_multiple.configure(state="normal")
+    
     def update_filepath(self, file_path: str):
         self.file_path.set(file_path)
 
@@ -136,12 +137,16 @@ class ControlPanel(ttk.Frame):
             self.file_path.set(filename)
             self.on_image_selected(filename)
     
-    def _on_scale_change(self, event=None):
+    def _on_scale_change(self, event = None):
         """Handle scale value changes"""
-        width = int(self.width_multiple.get())
-        height = int(self.height_multiple.get())
-        self._update_price()
-        self.on_scale_changed(width, height, self.preview_option.get())
+        if not self.preview_state.is_previewing:
+            try:
+                width = int(self.width_multiple.get())
+                height = int(self.height_multiple.get())
+                self._update_price()
+                self.on_scale_changed(width, height)
+            except ValueError:
+                pass
     
     def _update_price(self):
         """Update the price display"""

@@ -23,6 +23,7 @@ class PreviewCanvas(ttk.Frame):
         
         self.photo_image = None
         self.current_preview = None
+        self.preview_mode = "normal"
     
     def update_preview(self, preview_image):
         """Update the preview with a new image"""
@@ -42,6 +43,10 @@ class PreviewCanvas(ttk.Frame):
         x = (self.canvas.winfo_width() - preview_image.width) // 2
         y = (self.canvas.winfo_height() - preview_image.height) // 2
         self.canvas.create_image(x, y, anchor=tk.NW, image=self.photo_image)
+    
+    def set_preview_mode(self, mode):
+        """Set the preview mode (normal or minecraft)"""
+        self.preview_mode = mode
     
     def on_resize(self, event):
         """Handle canvas resize events"""
